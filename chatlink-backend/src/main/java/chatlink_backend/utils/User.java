@@ -2,9 +2,7 @@ package chatlink_backend.utils;
 
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
+import org.springframework.data.annotation.Id;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,7 +17,6 @@ public class User {
 
     private String password;
 
-    @Enumerated(EnumType.STRING)
     private Role role;
 
     public User(String id, String login, String password) {

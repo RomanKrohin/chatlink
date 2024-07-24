@@ -12,6 +12,8 @@ import chatlink_backend.repositories.UserRepository;
 import chatlink_backend.security.JwtUtil;
 import chatlink_backend.utils.User;
 import java.util.Collections;
+import java.util.logging.Logger;
+import java.util.Optional;
 
 @Service
 public class UserService {
@@ -32,10 +34,10 @@ public class UserService {
         );
     }
 
-    public String authenticate(String email, String password) {
-        User user = userRepository.findByLogin(email).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    public String authenticate(String login, String password) {
+        User user = userRepository.findByLogin(login).orElseThrow(() -> new UsernameNotFoundException("User not found"));
         if (new BCryptPasswordEncoder().matches(password, user.getPassword())) {
-            return jwtUtil.generateToken(email);
+            return jwtUtil.generateToken(login);
         } else {
             throw new RuntimeException("Invalid credentials");
         }
@@ -43,11 +45,13 @@ public class UserService {
 
     public String registerUser(User user) {
         try {
+            Optional<User> user_check = userRepository.findByLogin(user.getLogin());
+            if (user_check.isPresent()) throw new DataIntegrityViolationException(null);
             user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
             user = userRepository.save(user);
             return jwtUtil.generateToken(user.getLogin());
         } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("User with email " + user.getLogin() + " already exists");
+            throw new RuntimeException("User with login " + user.getLogin() + " already exists");
         }
     }
     

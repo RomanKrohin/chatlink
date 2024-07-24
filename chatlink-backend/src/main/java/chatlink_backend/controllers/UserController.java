@@ -1,5 +1,8 @@
 package chatlink_backend.controllers;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,7 +18,7 @@ import chatlink_backend.utils.User;
 @RestController
 @RequestMapping("/auth")
 public class UserController {
-    
+
     @Autowired
     UserService userService;
 
@@ -29,10 +32,10 @@ public class UserController {
         }
     }
 
-    @GetMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestParam String email, @RequestParam String password) {
+    @PostMapping("/login")
+    public ResponseEntity<String> loginUser(@RequestParam String login, @RequestParam String password) {
         try {
-            String token = userService.authenticate(email, password);
+            String token = userService.authenticate(login, password);
             return ResponseEntity.ok(token);
         } catch (RuntimeException e) {
             return ResponseEntity.status(401).body(e.getMessage());

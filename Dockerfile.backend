@@ -9,5 +9,5 @@ RUN gradle clean build --no-daemon
 
 FROM openjdk:17-jdk-slim
 EXPOSE 8080
-COPY --from=builder /opt/project/build/libs/chatlink-backend-0.0.1-SNAPSHOT.jar /opt/project/build/libs/chatlink-backend-0.0.1-SNAPSHOT.jar
-CMD ["java", "-jar", "/opt/project/build/libs/chatlink-backend-0.0.1-SNAPSHOT.jar"]
+COPY --from=builder /opt/project/build/libs/chatlink-backend.jar /opt/project/build/libs/chatlink-backend.jar
+CMD ["java", "-jar", "/opt/project/build/libs/chatlink-backend.jar"]

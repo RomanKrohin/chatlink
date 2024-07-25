@@ -25,7 +25,7 @@ public class AuthController {
     AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody User user) throws JsonProcessingException{
+    public ResponseEntity<String> registerUser(@RequestBody User user) throws JsonProcessingException,  InterruptedException{
         try {
             String token = authService.registerUser(user);
             return ResponseEntity.ok(token);
@@ -34,8 +34,8 @@ public class AuthController {
         }
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestParam String login, @RequestParam String password) {
+    @GetMapping("/login")
+    public ResponseEntity<String> loginUser(@RequestParam String login, @RequestParam String password) throws InterruptedException{
         try {
             String token = authService.authenticate(login, password);
             return ResponseEntity.ok(token);

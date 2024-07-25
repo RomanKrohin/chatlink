@@ -13,5 +13,7 @@ public interface UserRepository extends MongoRepository<User, String>{
     @Query("{ 'login' : ?0 }")
     Optional<User> findByLogin(String login);
 
-    boolean existsByLogin(String login);
+    @Query("{ 'login' : ?0, 'password' : ?1 }")
+    Optional<User> findByLoginAndPassword(String login, String password);
+
 }

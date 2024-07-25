@@ -49,8 +49,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public UserDetailsService userDetailsService() {
-        return email -> authService.loadUserByUsername(email);
+    public UserDetailsService userDetailsService(){
+        return login -> authService.loadUserByUsername(login);
     }
 
     @Bean

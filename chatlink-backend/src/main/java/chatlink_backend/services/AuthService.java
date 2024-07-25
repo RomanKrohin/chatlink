@@ -2,6 +2,7 @@ package chatlink_backend.services;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -19,6 +20,12 @@ import chatlink_backend.security.JwtUtil;
 import java.util.Collections;
 import java.util.logging.Logger;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
+
+
+import chatlink_backend.models.ServiceResponse;
 
 @Service
 public class AuthService {
@@ -35,43 +42,92 @@ public class AuthService {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    private final ConcurrentHashMap<String, CountDownLatch> latches = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, ServiceResponse> responses = new ConcurrentHashMap<>();
+
     public UserDetails loadUserByUsername(String login) throws UsernameNotFoundException {
-        // User user = userRepository.findByLogin(login).orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        User user = new User();
+        sendUserCheckRequest(login);
+
+        ServiceResponse authResponse = getAuthResponse(login);
+        
         return new org.springframework.security.core.userdetails.User(
-                user.getLogin(),
-                user.getPassword(),
-                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
+                authResponse.getMessage()[0],
+                authResponse.getMessage()[1],
+                Collections.singleton(new SimpleGrantedAuthority("ROLE_" + authResponse.getMessage()[2]))
         );
     }
 
-    public String authenticate(String login, String password) {
-        // User user = userRepository.findByLogin(login).orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        User user = new User();
-        if (new BCryptPasswordEncoder().matches(password, user.getPassword())) {
+    public String authenticate(String login, String password) throws InterruptedException {
+        sendUserCheckRequest(login);
+
+        ServiceResponse authResponse = getAuthResponse(login);
+
+        if (new BCryptPasswordEncoder().matches(password, authResponse.getMessage()[1])) {
             return jwtUtil.generateToken(login);
         } else {
             throw new RuntimeException("Invalid credentials");
         }
     }
 
-    public String registerUser(User user) throws JsonProcessingException {
+    public String registerUser(User user) throws JsonProcessingException, InterruptedException {
+        sendUserCheckRequest(user.getLogin());
+
+        ServiceResponse authResponse = getAuthResponse(user.getLogin());
+
+        if (authResponse.isStatus()) {
+            throw new DataIntegrityViolationException(null);
+        }
+
+        user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
+
+        String userJson = objectMapper.writeValueAsString(user);
+        kafkaTemplate.send("user-registration", userJson);
+
+        return jwtUtil.generateToken(user.getLogin());
+    }
+
+    private void sendUserCheckRequest(String login) {
+        CountDownLatch latch = new CountDownLatch(1);
+        latches.put(login, latch);
+        kafkaTemplate.send("user-check", login);
+    }
+
+    private ServiceResponse getAuthResponse(String login) {
+        CountDownLatch latch = latches.get(login);
+
+
         try {
-            if (userExistsByLogin(user.getLogin())) throw new DataIntegrityViolationException(null);
-            user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
+            if (latch != null) {
+                latch.await(3, TimeUnit.SECONDS);
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException("Timeout waiting for authentication response");
+        }
+        
 
-            String userJson = objectMapper.writeValueAsString(user);
-            kafkaTemplate.send("user-registration", userJson);
+        ServiceResponse authResponse = responses.get(login);
 
-            return jwtUtil.generateToken(user.getLogin());
-        } catch (DataIntegrityViolationException e) {
-            throw new RuntimeException("User with login " + user.getLogin() + " already exists");
+        latches.remove(login);
+        responses.remove(login);
+
+        if (authResponse == null) {
+            throw new RuntimeException("Timeout waiting for authentication response");
+        }
+
+        return authResponse;
+    }
+
+    @KafkaListener(topics = "auth-check", groupId = "auth-group")
+    public void userExistsByLogin(String jsonResponse) throws JsonProcessingException {
+        ServiceResponse response = new ObjectMapper().readValue(jsonResponse, ServiceResponse.class);
+
+        String login = response.getMessage()[0];
+        responses.put(login, response);
+
+        CountDownLatch latch = latches.get(login);
+        if (latch != null) {
+            latch.countDown();
         }
     }
-
-    public boolean userExistsByLogin(String login) {
-        String url = "http://localhost:8082/users/existsByLogin?login=" + login;
-        return restTemplate.getForObject(url, Boolean.class);
-    }
-    
 }
+

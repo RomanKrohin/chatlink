@@ -16,7 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import chatlink_backend.filters.JwtRequestFilter;
-import chatlink_backend.services.UserService;
+import chatlink_backend.services.AuthService;
 
 @Configuration
 @EnableWebSecurity
@@ -27,7 +27,7 @@ public class SecurityConfig {
     private JwtUtil jwtUtil;
 
     @Autowired
-    private UserService userService;
+    private AuthService authService;
 
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
@@ -50,7 +50,7 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return email -> userService.loadUserByUsername(email);
+        return email -> authService.loadUserByUsername(email);
     }
 
     @Bean

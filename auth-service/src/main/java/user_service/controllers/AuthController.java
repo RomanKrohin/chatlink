@@ -3,6 +3,7 @@ package user_service.controllers;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException.BadRequest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
@@ -25,25 +27,21 @@ public class AuthController {
     AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody User user) throws JsonProcessingException,  InterruptedException{
-        try {
-            String token = authService.registerUser(user);
-            return ResponseEntity.ok(token);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+    public ResponseEntity<String> registerUser(@RequestBody User user) throws JsonProcessingException, InterruptedException, BadRequestException{
+        
+        if (user==null || user.getLogin()==null || user.getPassword()==null) throw new BadRequestException();
+        
+        String token = authService.registerUser(user);
+        return ResponseEntity.ok(token);
     }
 
     @GetMapping("/login")
-    public ResponseEntity<String> loginUser(@RequestParam String login, @RequestParam String password) throws InterruptedException{
-        try {
-            String token = authService.authenticate(login, password);
-            return ResponseEntity.ok(token);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(e.getMessage());
-        }
+    public ResponseEntity<String> loginUser(@RequestBody User user) throws InterruptedException, BadRequestException{
+
+        if (user==null || user.getLogin()==null || user.getPassword()==null) throw new BadRequestException();
+
+        String token = authService.authenticate(user.getLogin(), user.getPassword());
+        return ResponseEntity.ok(token);
     }
-
-
 
 }

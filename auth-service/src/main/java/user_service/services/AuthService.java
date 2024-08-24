@@ -38,8 +38,6 @@ public class AuthService {
 
     private RestTemplate restTemplate = new RestTemplate();
 
-    private static final Logger logger = Logger.getLogger("pivo");
-
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private final ConcurrentHashMap<String, CountDownLatch> latches = new ConcurrentHashMap<>();
@@ -74,9 +72,7 @@ public class AuthService {
 
         ServiceResponse authResponse = getAuthResponse(user.getLogin());
 
-        if (authResponse.isStatus()) {
-            throw new DataIntegrityViolationException(null);
-        }
+        if (authResponse.isStatus()) throw new DataIntegrityViolationException(null);
 
         user.setPassword(new BCryptPasswordEncoder().encode(user.getPassword()));
 
@@ -110,9 +106,7 @@ public class AuthService {
         latches.remove(login);
         responses.remove(login);
 
-        if (authResponse == null) {
-            throw new RuntimeException("Timeout waiting for authentication response");
-        }
+        if (authResponse == null) throw new RuntimeException("Timeout waiting for authentication response");
 
         return authResponse;
     }
